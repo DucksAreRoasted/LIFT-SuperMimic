@@ -3,15 +3,15 @@ __pycache__/
 .ruff_cache/
 *.pyc
 *.egg-info/
-artifacts/
-logs/
+/artifacts/
+/logs/
 .venv/
 .venv-retarget/
 .uv-cache/
-data/
-outputs/
-build/
-dist/
+/data/
+/outputs/
+/build/
+/dist/
 MUJOCO_LOG.TXT
 *.mjb
 
