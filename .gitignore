@@ -14,3 +14,6 @@ build/
 dist/
 MUJOCO_LOG.TXT
 *.mjb
+
+# Keep literature PDFs local.
+*.[pP][dD][fF]
