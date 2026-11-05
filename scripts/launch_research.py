@@ -31,6 +31,9 @@ def github_environment(environment, mirror=None, proxy=None):
     if proxy:
         settings.append(("http.https://github.com/.proxy", proxy))
     if settings:
+        # Server images may ship a stale global GitHub URL rewrite. Keep routing isolated.
+        environment["GIT_CONFIG_GLOBAL"] = os.devnull
+        environment["GIT_CONFIG_NOSYSTEM"] = "1"
         offset = int(environment.get("GIT_CONFIG_COUNT", "0"))
         for number, (key, value) in enumerate(settings, offset):
             environment[f"GIT_CONFIG_KEY_{number}"] = key

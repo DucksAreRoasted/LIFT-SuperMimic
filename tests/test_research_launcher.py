@@ -113,6 +113,8 @@ def test_github_mirror_preserves_existing_git_settings():
     assert env["GIT_CONFIG_KEY_1"] == "url.https://mirror.example/https://github.com/.insteadOf"
     assert env["GIT_CONFIG_VALUE_1"] == "https://github.com/"
     assert env["GIT_CONFIG_VALUE_0"] == "keep"
+    assert env["GIT_CONFIG_GLOBAL"] == "/dev/null"
+    assert env["GIT_CONFIG_NOSYSTEM"] == "1"
     assert initial["GIT_CONFIG_COUNT"] == "1"
 
 
