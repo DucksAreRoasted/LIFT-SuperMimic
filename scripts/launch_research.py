@@ -42,6 +42,18 @@ def github_environment(environment, mirror=None, proxy=None):
     return environment
 
 
+def download_environment(environment, proxy=None):
+    environment = environment.copy()
+    if proxy:
+        environment["HTTPS_PROXY"] = environment["HTTP_PROXY"] = proxy
+        environment["https_proxy"] = environment["http_proxy"] = proxy
+        bypass = [environment.get("NO_PROXY", environment.get("no_proxy", "")),
+                  "localhost", "127.0.0.1", "repo.huaweicloud.com", "modelscope.cn", ".modelscope.cn",
+                  "nvidia.cn", ".nvidia.cn"]
+        environment["NO_PROXY"] = environment["no_proxy"] = ",".join(x for x in bypass if x)
+    return environment
+
+
 def write_json(path, value):
     temporary = path.with_suffix(path.suffix + ".tmp")
     temporary.write_text(json.dumps(value, ensure_ascii=False, indent=2) + "\n")
@@ -104,6 +116,7 @@ def execute(args):
     env.setdefault("OMP_NUM_THREADS", "4")
     env.setdefault("MKL_NUM_THREADS", "4")
     env = github_environment(env, getattr(args, "github_mirror", None), getattr(args, "github_proxy", None))
+    env = download_environment(env, getattr(args, "download_proxy", None))
     try:
         for entry in json.loads((args.output / "plan.json").read_text()):
             current = {"name": entry["name"], "status": "running", "started_unix": time.time()}
@@ -179,6 +192,8 @@ def main():
                         help="GitHub URL prefix, e.g. https://your-mirror/https://github.com/")
     github.add_argument("--github-proxy", default=os.environ.get("TADG_GITHUB_PROXY"),
                         help="HTTP/SOCKS proxy reachable from this server; used for GitHub Git traffic only")
+    parser.add_argument("--download-proxy", default=os.environ.get("TADG_DOWNLOAD_PROXY"),
+                        help="Optional HTTP(S) proxy for slow external downloads; Huawei/ModelScope/NVIDIA CN bypass it")
     parser.add_argument("--output", type=Path)
     parser.add_argument("--skip-smoke", action="store_true")
     parser.add_argument("--no-sync", action="store_true", help="Use an already installed uv train environment")
@@ -199,6 +214,10 @@ def main():
         parsed = urlsplit(args.github_proxy)
         if parsed.scheme not in {"http", "https", "socks5", "socks5h"} or not parsed.netloc:
             parser.error("--github-proxy requires an HTTP(S) or SOCKS5 URL")
+    if args.download_proxy:
+        parsed = urlsplit(args.download_proxy)
+        if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+            parser.error("--download-proxy requires an HTTP(S) URL")
     if args.status:
         if args.output is None:
             parser.error("--status requires --output")

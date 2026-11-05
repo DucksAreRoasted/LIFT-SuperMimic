@@ -150,3 +150,13 @@ def test_modelscope_download_request_preserves_dataset_and_revision(tmp_path):
     assert "--download" in command
     assert command[command.index("--dataset-id") + 1] == launcher.MODELSCOPE_DATASET
     assert command[command.index("--revision") + 1] == "pinned-revision"
+
+
+def test_external_download_proxy_bypasses_chinese_sources():
+    initial = {"NO_PROXY": "existing.host"}
+    env = launcher.download_environment(initial, "http://127.0.0.1:17890")
+    assert env["HTTPS_PROXY"] == env["https_proxy"] == "http://127.0.0.1:17890"
+    assert env["HTTP_PROXY"] == env["http_proxy"] == "http://127.0.0.1:17890"
+    assert set(["existing.host", "repo.huaweicloud.com", "modelscope.cn", ".modelscope.cn"]).issubset(
+        env["NO_PROXY"].split(","))
+    assert initial == {"NO_PROXY": "existing.host"}
