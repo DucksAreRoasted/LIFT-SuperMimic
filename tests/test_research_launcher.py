@@ -17,7 +17,7 @@ spec.loader.exec_module(launcher)
 def arguments(tmp_path, **overrides):
     values = dict(output=tmp_path, motions=tmp_path / "r1", checkpoint=tmp_path / "pretrained.pt",
                   data_source=None, download_data=False, workers=4, no_sync=False,
-                  skip_smoke=False, stage="pilot", gpu="0")
+                  skip_smoke=False, stage="pilot", gpu="0", background_backend="tmux")
     return SimpleNamespace(**(values | overrides))
 
 
@@ -81,3 +81,70 @@ def test_successful_pipeline_records_completion_and_isolates_train_environment(t
     state = json.loads((tmp_path / "pipeline_status.json").read_text())
     assert state["status"] == "completed"
     assert all(stage["status"] == "completed" for stage in state["stages"])
+
+
+def test_tmux_uses_quoted_command_and_writes_session_record(tmp_path, monkeypatch):
+    import shlex
+    calls = []
+    monkeypatch.setattr(launcher.shutil, "which", lambda name: "/bin/tmux")
+    monkeypatch.setattr(launcher.subprocess, "run", lambda command, **kw: calls.append((command, kw)))
+    command = ["/path with spaces/python", "worker.py", "--checkpoint", "literal$(false); name.pt"]
+    launcher.start_background(arguments(tmp_path), command)
+    args, options = calls[0]
+    assert args[:3] == ["/bin/tmux", "new-session", "-d"]
+    assert options["check"] is True
+    # Shell parsing must preserve literal arguments rather than interpreting checkpoint text.
+    tokens = shlex.split(args[-1])
+    assert tokens[0] == "exec" and tokens[1:len(command)+1] == command
+    record = json.loads((tmp_path / "launcher.json").read_text())
+    assert record["backend"] == "tmux" and record["session"].startswith("r1_tadg_")
+
+
+def test_missing_tmux_does_not_silently_change_backend(tmp_path, monkeypatch):
+    monkeypatch.setattr(launcher.shutil, "which", lambda name: None)
+    with pytest.raises(FileNotFoundError, match="tmux is required"):
+        launcher.start_background(arguments(tmp_path), ["worker.py"])
+
+
+def test_github_mirror_preserves_existing_git_settings():
+    initial = {"GIT_CONFIG_COUNT": "1", "GIT_CONFIG_KEY_0": "existing.key", "GIT_CONFIG_VALUE_0": "keep"}
+    env = launcher.github_environment(initial, mirror="https://mirror.example/https://github.com/")
+    assert env["GIT_CONFIG_COUNT"] == "2"
+    assert env["GIT_CONFIG_KEY_1"] == "url.https://mirror.example/https://github.com/.insteadOf"
+    assert env["GIT_CONFIG_VALUE_1"] == "https://github.com/"
+    assert env["GIT_CONFIG_VALUE_0"] == "keep"
+    assert initial["GIT_CONFIG_COUNT"] == "1"
+
+
+def test_github_proxy_is_scoped_and_connectivity_precedes_install(tmp_path):
+    env = launcher.github_environment({}, proxy="http://127.0.0.1:7890")
+    assert env["GIT_CONFIG_KEY_0"] == "http.https://github.com/.proxy"
+    assert "HTTPS_PROXY" not in env
+    plan = launcher.build_plan(arguments(tmp_path, github_proxy="http://127.0.0.1:7890"), "/bin/uv")
+    assert plan[0]["name"] == "github_access" and plan[0]["timeout_s"] == 90
+    assert plan[1]["name"] == "environment"
+
+
+def test_real_git_recognizes_mirror_and_host_scoped_proxy():
+    import os
+    import shutil
+    if not shutil.which("git"):
+        pytest.skip("Git is required for this offline configuration test")
+    env = launcher.github_environment(os.environ, mirror="https://mirror.example/https://github.com/")
+    url = subprocess.check_output(["git", "ls-remote", "--get-url", "https://github.com/mujocolab/mjlab"],
+                                  env=env, text=True).strip()
+    assert url == "https://mirror.example/https://github.com/mujocolab/mjlab"
+    env = launcher.github_environment(os.environ, proxy="http://127.0.0.1:7890")
+    proxy = subprocess.check_output(["git", "config", "--get-urlmatch", "http.proxy",
+                                    "https://github.com/mujocolab/mjlab"], env=env, text=True).strip()
+    assert proxy == "http://127.0.0.1:7890"
+
+
+def test_modelscope_download_request_preserves_dataset_and_revision(tmp_path):
+    args = arguments(tmp_path, download_data=True,
+                     dataset_id=launcher.MODELSCOPE_DATASET, dataset_revision="pinned-revision")
+    plan = launcher.build_plan(args, "/bin/uv")
+    command = next(p for p in plan if p["name"] == "data")["command"]
+    assert "--download" in command
+    assert command[command.index("--dataset-id") + 1] == launcher.MODELSCOPE_DATASET
+    assert command[command.index("--revision") + 1] == "pinned-revision"
