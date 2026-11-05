@@ -1,0 +1,22 @@
+[project]
+name = "supermimic"
+version = "0.1.0"
+description = "Reproduction of SuperMimic (arXiv 2610.28480): one differentiable world model + BPTT for humanoid whole-body tracking, on mjlab / MuJoCo Warp"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "numpy",
+  "scipy>=1.15",
+  "pandas",
+  "tqdm",
+]
+
+[project.scripts]
+sm-train = "supermimic.scripts.train:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/supermimic"]

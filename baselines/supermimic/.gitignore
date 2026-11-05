@@ -1,0 +1,41 @@
+.venv/
+.venv-retarget/
+.uv-cache/
+__pycache__/
+*.pyc
+*.egg-info/
+build/
+dist/
+/logs/
+/data/
+wandb/
+*.npz
+*.pt
+*.onnx
+.pytest_cache/
+.ruff_cache/
+/outputs/
+experiments/**/outputs/
+
+# Local configuration and generated MuJoCo artifacts
+.env
+.env.*
+!.env.example
+MUJOCO_LOG.TXT
+*.mjb
+.write.lock
+*.log
+
+# Vendor only the assets needed by the G1 -> R1/K1 pipeline.
+/third_party/robot_retargeter/dataset/
+/third_party/robot_retargeter/asset/robot/*
+!/third_party/robot_retargeter/asset/robot/g1_description/
+/third_party/booster_assets/robots/*
+!/third_party/booster_assets/robots/K1/
+/third_party/booster_assets/motions/
+/third_party/robot_retargeter/*.gif
+
+# Generated media; retain the two demos referenced by the README.
+/media/*
+!/media/g1_boneseed_highlights.gif
+!/media/g1_boneseed_showcase.mp4

@@ -1,0 +1,16 @@
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+*.pyc
+*.egg-info/
+artifacts/
+logs/
+.venv/
+.venv-retarget/
+.uv-cache/
+data/
+outputs/
+build/
+dist/
+MUJOCO_LOG.TXT
+*.mjb

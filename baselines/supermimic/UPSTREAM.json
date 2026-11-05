@@ -1,0 +1,19 @@
+{
+  "url": "https://github.com/DucksAreRoasted/SuperMimic_Reproduce.git",
+  "commit": "555d1b18232ef110de4526e221d2fb441068dd07",
+  "source": "git archive of exact GitHub HEAD; original working-tree modifications excluded",
+  "layout": {
+    "baseline": "baselines/supermimic",
+    "third_party": "third_party"
+  },
+  "excluded": [
+    "media/",
+    "data/",
+    "logs/",
+    ".git/"
+  ],
+  "integration_changes": [
+    "third-party path relocation",
+    "uv dependencies consolidated at workspace root"
+  ]
+}

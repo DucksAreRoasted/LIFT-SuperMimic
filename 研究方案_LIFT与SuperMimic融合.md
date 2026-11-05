@@ -1,14 +1,16 @@
 # LIFT 与 SuperMimic 融合研究：代码观察、创新方向与实验方案
 
+**2026-11-05 实验安排：**训练与评估由用户在服务器执行，本地不启动。首轮先比较共享检查点下的原 SuperMimic、Q-only、随机 soft-BPTT 和固定双梯度，统一记录学习信号、实际跟踪表现与计算成本；[服务器启动与记录说明](docs/服务器实验与记录.md)已补充，新增实验功能尚未实跑，不将准备脚本视为实验完成。
+
 整理日期：2026-11-03；研究范围与双梯度方案更新：2026-11-04。
 
 ## 1. 核心建议
 
 **2026-11-04 决策：用户确认沿“mimic 双梯度可靠性校准”方向推进。** 第一阶段按[实施计划](实施计划_TADG.md)验证两种梯度的互补性与实际更新收益；原方向一保留为后续时域控制机制。
 
-**实施约束：每个交付均须是可独立运行和验收的小任务。** 本文阶段是研究逻辑分组，实际执行以实施计划中的任务编号为单位；上游产物冻结后供下游加载，不以完整训练收敛代替局部验证。
+**2026-11-05 执行方式调整：**直接基于已完成的 SuperMimic 和 LIFT 复现修改算法。原先检查任务不再作为路线；实现按随机 Actor、SAC 分支、soft BPTT、双梯度融合、可信度和自适应时域组织。具体检查随代码修改进行。
 
-逐项操作见[任务执行指南](任务执行指南_TADG.md)，包含源码定位、执行步骤、独立验证样例与失败排查，并配套[验收记录模板](docs/templates/task_record.md)。
+当前代码与运行方式见[执行说明](任务执行指南_TADG.md)，改动顺序见[实施计划](实施计划_TADG.md)。固定权重双梯度骨架已实现，可信度和自适应时域尚未实现，未运行 G1 训练。
 
 研究场景确定为 **humanoid motion mimic／参考动作跟踪**。保留原方向一，将其扩展为以下问题：
 
@@ -57,7 +59,7 @@ SSRL 已采用这种分工，LIFT 将其用于 humanoid 的预训练与适应衔
 
 这些具体实现有一部分是复现者填补论文未明确之处的设计，不能全部归为 SuperMimic 原论文的明确贡献。
 
-代码：[state_spec.py](/home/ducks/SuperMimic_Reproduce/src/supermimic/world_model/state_spec.py)、[dynamics.py](/home/ducks/SuperMimic_Reproduce/src/supermimic/world_model/dynamics.py)。
+代码：[state_spec.py](baselines/supermimic/src/supermimic/world_model/state_spec.py)、[dynamics.py](baselines/supermimic/src/supermimic/world_model/dynamics.py)。
 
 ### 3.2 解析 FK、奖励与观测，应优先保留
 
@@ -65,7 +67,7 @@ SSRL 已采用这种分工，LIFT 将其用于 humanoid 的预训练与适应衔
 
 融合初期应保持奖励、观测与评测口径不变，优先比较动力学和策略更新机制，降低归因难度。
 
-代码：[compiled.py](/home/ducks/SuperMimic_Reproduce/src/supermimic/imagination/compiled.py)、[heads.py](/home/ducks/SuperMimic_Reproduce/src/supermimic/world_model/heads.py)。
+代码：[compiled.py](baselines/supermimic/src/supermimic/imagination/compiled.py)、[heads.py](baselines/supermimic/src/supermimic/world_model/heads.py)。
 
 ### 3.3 冻结参数，不能切断输入梯度
 
@@ -73,7 +75,7 @@ SSRL 已采用这种分工，LIFT 将其用于 humanoid 的预训练与适应衔
 
 两个容易出现的实现错误是：把整个世界模型调用放进 `no_grad()`，或将末端价值整体 `detach()`。它们会切断本来需要的策略梯度。
 
-代码：[policy_trainer.py](/home/ducks/SuperMimic_Reproduce/src/supermimic/imagination/policy_trainer.py)。
+代码：[policy_trainer.py](baselines/supermimic/src/supermimic/imagination/policy_trainer.py)。
 
 ### 3.4 真实失败、时间截断和模型不可信需要分开
 
@@ -81,7 +83,7 @@ SuperMimic 使用预测终止概率形成软生存权重。回放缓冲区还保
 
 若引入“模型不可信时提前结束想象”，这种结束不应被当作机器人失败，而应在相应状态接 critic 自举。否则会把模型知识不足错误地变成任务惩罚。
 
-代码：[replay_buffer.py](/home/ducks/SuperMimic_Reproduce/src/supermimic/data/replay_buffer.py)、[objective.py](/home/ducks/SuperMimic_Reproduce/src/supermimic/imagination/objective.py)。
+代码：[replay_buffer.py](baselines/supermimic/src/supermimic/data/replay_buffer.py)、[objective.py](baselines/supermimic/src/supermimic/imagination/objective.py)。
 
 ### 3.5 LIFT 的状态和控制语义对齐非常关键
 
@@ -103,7 +105,7 @@ LIFT 强调 MuJoCo 与 Brax 之间的状态映射、坐标系、四元数、归�
 
 新增物理动力学、模型集成或自适应时域时，应报告实际耗时和显存，而不能仅比较环境交互量。固定张量形状、批量参考量计算以及减少 CPU／GPU 同步，都应尽量保留。
 
-来源：[EXPERIMENTS.md](/home/ducks/SuperMimic_Reproduce/docs/EXPERIMENTS.md)。
+来源：[EXPERIMENTS.md](baselines/supermimic/docs/EXPERIMENTS.md)。
 
 ## 4. 推荐方向一：按梯度可信度控制想象优化
 
@@ -307,7 +309,7 @@ $$
 HDPI 已覆盖复杂 locomotion 与 Humanoid-Bench，不能将“改用 humanoid 实验”作为区别。mimic 的参考相位、动作切换和落地阶段提供更具体的诊断对象，但增加场景本身不构成方法创新。
 
 来源：[HDPI 论文主页](https://proceedings.mlr.press/v306/zhan26e.html)、[原始 PDF](https://raw.githubusercontent.com/mlresearch/v306/main/assets/zhan26e/zhan26e.pdf)。
-本地副本：[HDPI_ICML2026.pdf](/home/ducks/Desktop/LIFT-SuperMimic/references/HDPI_ICML2026.pdf)。
+本地副本：[HDPI_ICML2026.pdf](参考文献/原版/HDPI_ICML2026.pdf)。
 
 ### 5.8 对用户提供的 TADG 参考方案的修正
 
@@ -484,9 +486,9 @@ AGPO 的主要对象是可微仿真中的梯度；本方案采用学习型世界
 
 ### 本地复现说明
 
-- [README](/home/ducks/SuperMimic_Reproduce/README.md)
-- [论文规格与未明确项](/home/ducks/SuperMimic_Reproduce/docs/PAPER_SPEC.md)
-- [复现设计决策](/home/ducks/SuperMimic_Reproduce/docs/REPRODUCTION_PLAN.md)
-- [实验日志](/home/ducks/SuperMimic_Reproduce/docs/EXPERIMENTS.md)
+- [README](baselines/supermimic/README.md)
+- [论文规格与未明确项](baselines/supermimic/docs/PAPER_SPEC.md)
+- [复现设计决策](baselines/supermimic/docs/REPRODUCTION_PLAN.md)
+- [实验日志](baselines/supermimic/docs/EXPERIMENTS.md)
 
 本地仓库是独立复现，应始终区分原论文明确描述、复现实现选择、已有实验记录，以及本方案新增的研究假设。

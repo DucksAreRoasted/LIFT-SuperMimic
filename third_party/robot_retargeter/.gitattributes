@@ -1,0 +1,7 @@
+# Intentionally left blank: this repository does not use Git LFS.
+*.stl !text !filter !merge !diff
+*.STL !text !filter !merge !diff
+*.obj !text !filter !merge !diff
+*.dae !text !filter !merge !diff
+*.mtl !text !filter !merge !diff
+asset/**/*.png !text !filter !merge !diff

@@ -1,0 +1,82 @@
+{
+  "supermimic": {
+    "path": "/home/ducks/SuperMimic_Reproduce",
+    "url": "https://github.com/CuboiLeo/SuperMimic-Reproduced.git",
+    "commit": "ba6105349069bf040f1fdad60873d13138d505a2"
+  },
+  "robot_retargeter": {
+    "path": "/home/ducks/SuperMimic_Reproduce/third_party/robot_retargeter",
+    "url": "https://github.com/ccrpRepo/robot_retargeter.git",
+    "commit": "f1418972319287c1b93af0f7a3b445f613cff5e4"
+  },
+  "booster_assets": {
+    "path": "/home/ducks/SuperMimic_Reproduce/third_party/booster_assets",
+    "url": "https://github.com/BoosterRobotics/booster_assets.git",
+    "commit": "12a97516f57469078707afb587a5f84c1cb110d1"
+  },
+  "unitree_ros": {
+    "path": "/home/ducks/SuperMimic_Reproduce/third_party/unitree_ros",
+    "url": "https://github.com/unitreerobotics/unitree_ros.git",
+    "commit": "deeb607f3a8945a394f53068c28b3a88dde7ff06"
+  },
+  "r1": {
+    "nq": 33,
+    "nv": 32,
+    "joint_names": [
+      "left_hip_pitch_joint",
+      "left_hip_roll_joint",
+      "left_hip_yaw_joint",
+      "left_knee_joint",
+      "left_ankle_pitch_joint",
+      "left_ankle_roll_joint",
+      "right_hip_pitch_joint",
+      "right_hip_roll_joint",
+      "right_hip_yaw_joint",
+      "right_knee_joint",
+      "right_ankle_pitch_joint",
+      "right_ankle_roll_joint",
+      "waist_roll_joint",
+      "waist_yaw_joint",
+      "left_shoulder_pitch_joint",
+      "left_shoulder_roll_joint",
+      "left_shoulder_yaw_joint",
+      "left_elbow_joint",
+      "left_wrist_roll_joint",
+      "right_shoulder_pitch_joint",
+      "right_shoulder_roll_joint",
+      "right_shoulder_yaw_joint",
+      "right_elbow_joint",
+      "right_wrist_roll_joint",
+      "head_pitch_joint",
+      "head_yaw_joint"
+    ]
+  },
+  "k1": {
+    "nq": 29,
+    "nv": 28,
+    "joint_names": [
+      "aahead_yaw_joint",
+      "aahead_pitch_joint",
+      "aaleft_shoulder_pitch_joint",
+      "left_shoulder_roll_joint",
+      "left_elbow_pitch_joint",
+      "left_elbow_yaw_joint",
+      "aaright_shoulder_pitch_joint",
+      "right_shoulder_roll_joint",
+      "right_elbow_pitch_joint",
+      "right_elbow_yaw_joint",
+      "left_hip_pitch_joint",
+      "left_hip_roll_joint",
+      "left_hip_yaw_joint",
+      "left_knee_pitch_joint",
+      "left_ankle_pitch_joint",
+      "left_ankle_roll_joint",
+      "right_hip_pitch_joint",
+      "right_hip_roll_joint",
+      "right_hip_yaw_joint",
+      "right_knee_pitch_joint",
+      "right_ankle_pitch_joint",
+      "right_ankle_roll_joint"
+    ]
+  }
+}
