@@ -1,0 +1,49 @@
+{
+  "name": "r1_q_only_v_teacher_smoke",
+  "train_clips": [
+    "walk1_subject1"
+  ],
+  "eval_clips": [
+    "walk1_subject1"
+  ],
+  "train_iterations": 80,
+  "num_envs": 16,
+  "replay_capacity": 100,
+  "actor_batch_size": 16,
+  "wm_batch_size": 16,
+  "wm_batches_per_update": 1,
+  "horizon": 4,
+  "warmup_iterations": 20,
+  "updates_per_env_step": 0.4,
+  "log_interval": 12,
+  "eval_interval": 40,
+  "eval_max_steps": 100,
+  "eval_seed": 12345,
+  "trace_stride": 1,
+  "alpha": 0.0,
+  "dynamics_weight": 0.5,
+  "q_updates": 1,
+  "compile": null,
+  "max_hours_per_run": 0.1,
+  "save_recent_replay": true,
+  "deterministic_collection": false,
+  "robot": "r1",
+  "q_only": {
+    "q_warmup_updates": 4,
+    "fixed_std": true,
+    "actor_lr_scale": 0.1,
+    "q_teacher_v": true,
+    "require_q_calibration": true
+  },
+  "q_calibration": {
+    "states": 2,
+    "actions": 3,
+    "rollout_steps": 20,
+    "action_noise_std": 0.1,
+    "seed": 24680,
+    "min_return_gap": 0.001,
+    "min_pairs": 2,
+    "min_pairwise_accuracy": 0.65,
+    "max_normalized_rmse": 0.25
+  }
+}

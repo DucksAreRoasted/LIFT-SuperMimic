@@ -65,10 +65,29 @@ class RefBodies:
 
 
 def goal_features(ref: RefState, default_joint_pos: torch.Tensor) -> torch.Tensor:
+    """把一帧参考状态收成策略看到的单帧目标特征 (G1 为 68 维, plan D5).
+
+    输出沿最后一维拼接, 布局为 ``2 * n_joints + 10``:
+
+    * ``joint_pos - q0`` (``n_joints``): 相对默认站姿的关节角偏差, 去掉绝对零位偏置.
+    * ``joint_vel`` (``n_joints``): 关节速度, 与参考关节顺序一致.
+    * ``grav`` (3): 世界重力 ``(0, 0, -1)`` 在根连杆坐标系下的投影, 只编码根的俯仰/滚转.
+    * ``ang_b`` (3): 根角速度从世界系旋到根连杆系, 与 MuJoCo ``qvel`` 的根角速度约定相同.
+    * ``lin_h`` (3): 根线速度旋到纯偏航的朝向系, 水平分量是前向/侧向, 竖直分量仍是世界 z.
+    * ``height`` (1): 根在世界系的高度 ``z``.
+
+    朝向系只保留绕世界 z 的偏航, 因此特征不依赖世界系的绝对朝向, 平移的 xy 也不进入目标.
+    ``default_joint_pos`` 需能广播到 ``ref.joint_pos``.
+    """
+    # 根姿态四元数, 世界系, wxyz. 后续三个量都由它定义局部坐标系.
     q = ref.root_quat_w
+    # 重力在根体系的方向: 直立时约为 (0, 0, -1), 倾斜时 x/y 分量给出俯仰与滚转.
     grav = projected_gravity(q)
+    # quat_apply_inverse(q, v) 把世界系向量旋进 q 所表示的坐标系.
     ang_b = quat_apply_inverse(q, ref.root_ang_vel_w)
+    # yaw_quat 丢掉俯仰和滚转, 只留朝向; 线速度因此对绝对航向不变.
     lin_h = quat_apply_inverse(yaw_quat(q), ref.root_lin_vel_w)
+    # 2:3 而不是标量索引, 是为了保住最后一维, 方便和前面的向量拼接.
     height = ref.root_pos_w[..., 2:3]
     return torch.cat([ref.joint_pos - default_joint_pos, ref.joint_vel, grav, ang_b, lin_h, height], dim=-1)
 

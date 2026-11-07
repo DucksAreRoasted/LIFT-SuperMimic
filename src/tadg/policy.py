@@ -16,16 +16,19 @@ class ActionSample:
 
 
 class StochasticPolicy(nn.Module):
-    def __init__(self, mean_policy: nn.Module, log_std_init: float = -2.3):
+    def __init__(self, mean_policy: nn.Module, log_std_init: float = -2.3, *, learn_std: bool = True):
         super().__init__()
         if not -5.0 <= log_std_init <= 1.0:
             raise ValueError("log_std_init must be between -5 and 1")
         self.mean_policy = mean_policy
+        self.learn_std = learn_std
+        self.fixed_log_std = log_std_init
         self.cfg = mean_policy.cfg
         obs_dim = mean_policy.decoder.scale.numel()
         self.log_std_head = nn.Linear(obs_dim + self.cfg.latent_dim, self.cfg.n_joints)
         nn.init.zeros_(self.log_std_head.weight)
         nn.init.constant_(self.log_std_head.bias, log_std_init)
+        self.log_std_head.requires_grad_(learn_std)
         self.log_std_head.to(device=next(mean_policy.parameters()).device,
                              dtype=next(mean_policy.parameters()).dtype)
 
@@ -37,7 +40,8 @@ class StochasticPolicy(nn.Module):
         z = self.mean_policy.encoders[interface](goal)
         x = torch.cat((z, obs_hist * self.mean_policy.decoder.scale), dim=-1)
         mean = self.mean_policy.decoder.mlp(x)
-        log_std = self.log_std_head(x).clamp(-5.0, 1.0)
+        log_std = (self.log_std_head(x).clamp(-5.0, 1.0) if self.learn_std
+                   else torch.full_like(mean, self.fixed_log_std))
         # SuperMimic uses unbounded normalized joint setpoints. Adding tanh would change that interface.
         return Normal(mean, log_std.exp())
 

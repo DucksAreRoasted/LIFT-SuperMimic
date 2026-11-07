@@ -1,10 +1,11 @@
 """Adapt the existing replay and analytic observations to goal-conditioned SAC."""
 
 import torch
-
 from supermimic.data.replay_buffer import StartBatch
 from supermimic.world_model.heads import (
-    analytic_observation, anchor_relative_obs, flatten_history_term_major,
+    analytic_observation,
+    anchor_relative_obs,
+    flatten_history_term_major,
 )
 from supermimic.world_model.wm_trainer import reference_at
 
@@ -40,13 +41,18 @@ class ModelInputs:
             if self.cfg.obs_noise:
                 rel = rel + (2 * torch.rand_like(rel) - 1) * rel.new_tensor([0.25] * 3 + [0.05] * 6)
             goal = torch.cat((goal, rel), dim=-1)
+        features = self.features(state, xi, frame, obs, goal, ref=ref)
+        return obs, goal, features, ref
+
+    def features(self, state, xi, frame, obs, goal, *, ref=None):
+        ref = reference_at(self.lib, frame) if ref is None else ref
         mean_policy = self.policy.mean_policy
         features = torch.cat((self.wm.spec.canonical(state),
                               goal * mean_policy.encoders["motion"].scale,
                               self.wm.spec.normalize_xi(xi),
                               self.wm.heads.root_error_features(state, ref),
                               obs * mean_policy.decoder.scale), dim=-1)
-        return obs, goal, features, ref
+        return features
 
 
 def _start_at(buffer, env, time, history):

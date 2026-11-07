@@ -156,9 +156,13 @@ class Trainer:
     def act(self, obs) -> torch.Tensor:
         return self.policy(obs["policy"], obs["goal"])
 
-    def run(self) -> None:
+    def run(self, *, stop_iteration: int | None = None) -> None:
         cfg = self.cfg
         sch = cfg.schedule
+        # A short resumed probe must not compress the original cosine schedule.
+        limit = sch.total_iterations if stop_iteration is None else min(stop_iteration, sch.total_iterations)
+        if limit < self.iteration:
+            raise ValueError("stop_iteration precedes the restored checkpoint")
         env = self.env
         obs, _ = env.reset()
         t_start = time.time()
@@ -169,7 +173,7 @@ class Trainer:
         finished_lens: list[float] = []
         last_log = time.time()
 
-        while self.iteration < sch.total_iterations:
+        while self.iteration < limit:
             # ---------------- (1) collect one vectorised env step
             t0 = time.perf_counter()
             action = self.act(obs)

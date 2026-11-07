@@ -71,22 +71,30 @@ class SACBranch:
         self.opt = torch.optim.Adam(q.parameters(), lr=lr)
         self.gamma, self.alpha, self.tau = gamma, alpha, tau
 
-    def update(self, policy, batch):
+    def update(self, policy, batch, *, next_value=None):
         with torch.no_grad():
-            sample = policy.sample(batch.next_obs, batch.next_goal)
-            next_q = self.target_q.minimum(batch.next_features, sample.action)
-            target = bellman_target(batch.reward, batch.bootstrap, next_q, sample.log_prob,
-                                    self.gamma, self.alpha)
+            if next_value is None:
+                sample = policy.sample(batch.next_obs, batch.next_goal)
+                next_q = self.target_q.minimum(batch.next_features, sample.action)
+                target = bellman_target(batch.reward, batch.bootstrap, next_q, sample.log_prob,
+                                        self.gamma, self.alpha)
+            else:
+                if next_value.shape != batch.reward.shape:
+                    raise ValueError("Teacher V must return one value per transition")
+                target = batch.reward + self.gamma * batch.bootstrap * next_value
         q1, q2 = self.q(batch.features, batch.action)
         loss = ((q1 - target).square() + (q2 - target).square()).mean()
+        if not torch.isfinite(loss):
+            raise FloatingPointError("Non-finite Q loss; optimizer was not stepped")
         self.opt.zero_grad(set_to_none=True)
         loss.backward()
-        norm = torch.nn.utils.clip_grad_norm_(self.q.parameters(), 1.0)
+        norm = torch.nn.utils.clip_grad_norm_(self.q.parameters(), 1.0, error_if_nonfinite=True)
         self.opt.step()
         with torch.no_grad():
             for p_target, p in zip(self.target_q.parameters(), self.q.parameters()):
                 p_target.lerp_(p, self.tau)
         return {"q_loss": float(loss.detach()), "q_grad_norm": float(norm),
+                "q_target_source_v": int(next_value is not None),
                 "q_target_mean": float(target.mean()), "q1_mean": float(q1.detach().mean()),
                 "q2_mean": float(q2.detach().mean()),
                 "q_disagreement_abs": float((q1 - q2).detach().abs().mean()),

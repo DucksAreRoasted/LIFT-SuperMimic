@@ -76,7 +76,9 @@ class ReplayRecorder(RecorderTerm):
             a_exec=self.action_term.executed_raw[ids],
             xi=self.prev_xi[ids],
             r=env.reward_buf[ids],
-            done=done_next,
+            # This row holds s_t, which is not terminal. Only the extra reached
+            # terminal-state row carries the termination label consumed at t+1.
+            done=torch.zeros_like(done_next),
             frame=self.prev_frame[ids],
             clip=self.prev_clip[ids],
             terminal=torch.zeros_like(done_next, dtype=torch.bool),

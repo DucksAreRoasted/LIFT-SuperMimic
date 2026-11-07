@@ -2,12 +2,38 @@
 
 from types import SimpleNamespace
 
+import pytest
 import torch
 from torch import nn
 
 from tadg.gradients import dual_actor_step, soft_return
 from tadg.policy import StochasticPolicy
 from tadg.sac import SACBatch, SACBranch, TwinQ, bellman_target, frozen
+
+
+@pytest.mark.parametrize('weight', [0., 1.])
+def test_single_branch_does_not_differentiate_inactive_objective(weight):
+    actor = nn.Linear(1, 1, bias=False)
+    with torch.no_grad():
+        actor.weight.fill_(1.)
+    optimizer = torch.optim.SGD(actor.parameters(), lr=.1)
+    active = actor.weight.square().sum()
+    inactive = torch.tensor(0.)
+    q, dynamics = (active, inactive) if weight == 0 else (inactive, active)
+    metrics = dual_actor_step(actor, optimizer, q, dynamics, weight, grad_clip=100)
+    torch.testing.assert_close(actor.weight, torch.tensor([[1.2]]))
+    assert metrics['q_actor_grad_norm' if weight == 1 else 'dynamics_grad_norm'] == 0
+
+
+def test_compiled_bptt_placeholder_is_not_backpropagated_twice():
+    actor = nn.Linear(1, 1, bias=False)
+    with torch.no_grad():
+        actor.weight.fill_(1.)
+    compiled = torch.compile(lambda x: x.square().sum(), backend='aot_eager', fullgraph=True)
+    objective = compiled(actor.weight)
+    optimizer = torch.optim.SGD(actor.parameters(), lr=.1)
+    dual_actor_step(actor, optimizer, objective * 0, objective, 1., grad_clip=100)
+    torch.testing.assert_close(actor.weight, torch.tensor([[1.2]]))
 
 
 def test_existing_mean_policy_is_preserved():

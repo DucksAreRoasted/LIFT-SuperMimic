@@ -1,0 +1,78 @@
+{
+  "name": "r1_guarded_actor_integration_smoke",
+  "train_clips": [
+    "walk1_subject1"
+  ],
+  "eval_clips": [
+    "walk1_subject1"
+  ],
+  "train_iterations": 80,
+  "num_envs": 16,
+  "replay_capacity": 100,
+  "actor_batch_size": 16,
+  "wm_batch_size": 16,
+  "wm_batches_per_update": 1,
+  "horizon": 4,
+  "warmup_iterations": 20,
+  "updates_per_env_step": 0.4,
+  "log_interval": 12,
+  "eval_interval": 40,
+  "eval_max_steps": 100,
+  "eval_seed": 12345,
+  "trace_stride": 1,
+  "alpha": 0.0,
+  "dynamics_weight": 0.5,
+  "q_updates": 1,
+  "compile": "default",
+  "max_hours_per_run": 0.1,
+  "save_recent_replay": true,
+  "deterministic_collection": false,
+  "robot": "r1",
+  "q_only": {
+    "q_teacher_v": true,
+    "fixed_std": true,
+    "actor_lr_scale": 0.1,
+    "q_keep_teacher": true,
+    "actor_max_change_rms": 0.01,
+    "actor_max_teacher_deviation": 0.1,
+    "actor_max_backtracks": 8,
+    "require_q_calibration": false,
+    "q_warmup_updates": 4
+  },
+  "q_calibration": {
+    "states": 2,
+    "actions": 3,
+    "rollout_steps": 20,
+    "action_noise_std": 0.1,
+    "seed": 24680,
+    "min_return_gap": 0.001,
+    "min_pairs": 2,
+    "min_pairwise_accuracy": 0.65,
+    "max_normalized_rmse": 0.25
+  },
+  "bptt_soft": {
+    "q_teacher_v": true,
+    "fixed_std": true,
+    "actor_lr_scale": 0.1,
+    "q_keep_teacher": true,
+    "actor_max_change_rms": 0.01,
+    "actor_max_teacher_deviation": 0.1,
+    "actor_max_backtracks": 8,
+    "require_q_calibration": false,
+    "q_warmup_updates": 0,
+    "terminal_value_mode": "v"
+  },
+  "dual_fixed": {
+    "q_teacher_v": true,
+    "fixed_std": true,
+    "actor_lr_scale": 0.1,
+    "q_keep_teacher": true,
+    "actor_max_change_rms": 0.01,
+    "actor_max_teacher_deviation": 0.1,
+    "actor_max_backtracks": 8,
+    "require_q_calibration": false,
+    "q_warmup_updates": 4,
+    "terminal_value_mode": "v"
+  },
+  "validation_note": "Integration only: Q calibration disabled deliberately to exercise guarded Actor steps; not Q readiness or long-run performance evidence."
+}

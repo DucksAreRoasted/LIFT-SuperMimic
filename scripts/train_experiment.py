@@ -18,10 +18,11 @@ def main():
     parser.add_argument("--seed", type=int, required=True)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
-    import torch
     import numpy as np
+    import torch
+
     from tadg.experiment import RecordedBaselineTrainer, RecordedTADGTrainer, make_config
-    from tadg.recording import RunRecorder, write_json
+    from tadg.recording import RunRecorder
 
     protocol = json.loads(args.protocol.read_text())
     random.seed(args.seed)
@@ -59,6 +60,11 @@ def main():
         if protocol.get("save_recent_replay", True):
             trainer.export_recent_replay()
         status = "completed" if trainer.iteration >= cfg.schedule.total_iterations else "time_budget_stopped"
+        if (args.method != "supermimic" and cfg.tadg.require_q_calibration
+                and not trainer.policy_trainer.q_calibration_passed):
+            status = "calibration_not_passed"
+            raise RuntimeError("Q calibration did not pass at the final check; Actor updates are gated. "
+                               "See calibration reports and actual Actor update counters.")
     except BaseException:
         failure = traceback.format_exc()
         (args.output / "failure.txt").write_text(failure)

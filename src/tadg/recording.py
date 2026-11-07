@@ -51,7 +51,7 @@ def gpu_status():
     try:
         result = subprocess.run(
             ["nvidia-smi", "--query-gpu=index,uuid,name,memory.used,memory.total,utilization.gpu,power.draw",
-             "--format=csv,noheader,nounits"], capture_output=True, text=True, timeout=10)
+            "--format=csv,noheader,nounits"], capture_output=True, text=True, timeout=10, check=False)
         return {"returncode": result.returncode, "csv": result.stdout.strip(),
                 "stderr": result.stderr.strip()}
     except (OSError, subprocess.TimeoutExpired) as exc:
@@ -85,10 +85,12 @@ class RunRecorder:
         self._lock, self._stop = threading.Lock(), threading.Event()
         self._events = (self.directory / "events.jsonl").open("a", buffering=1)
         self.counters = {"wm_updates": 0, "wm_optimizer_steps": 0, "actor_updates": 0,
+                         "actor_rejected_updates": 0,
+                         "critic_only_updates": 0,
                          "q_optimizer_steps": 0, "imagination_steps": 0,
-                         "eval_env_transitions": 0}
+                         "eval_env_transitions": 0, "calibration_env_transitions": 0}
         self.times = {"wm_s": 0.0, "actor_and_q_s": 0.0, "evaluation_s": 0.0,
-                      "checkpoint_s": 0.0}
+                      "checkpoint_s": 0.0, "calibration_s": 0.0}
         write_json(self.directory / "run_metadata.json", {
             **metadata, "platform": platform.platform(), "torch": torch.__version__,
             "torch_cuda": torch.version.cuda, "gpu_initial": gpu_status(),
@@ -123,15 +125,22 @@ class RunRecorder:
                     self.counters["wm_optimizer_steps"] += trainer.cfg.wm_trainer.batches_per_update
                     self.times["wm_s"] += duration
                 else:
-                    self.counters["actor_updates"] += 1
+                    actor_step = int(metrics.get("actor_step_performed", 1))
+                    self.counters["actor_updates"] += actor_step
+                    self.counters["critic_only_updates"] += int(not actor_step)
+                    self.counters['actor_rejected_updates'] += int(metrics.get('actor_step_rejected', 0))
                     is_dual = hasattr(trainer.cfg, "tadg")
-                    self.counters["q_optimizer_steps"] += trainer.cfg.tadg.q_updates if is_dual else 0
+                    self.counters["q_optimizer_steps"] += (
+                        int(metrics.get("q_optimizer_steps", trainer.cfg.tadg.q_updates)) if is_dual else 0)
                     imagines = not is_dual or trainer.cfg.tadg.dynamics_weight > 0
-                    if imagines:
+                    if imagines and metrics.get('imagination_performed', actor_step):
                         self.counters["imagination_steps"] += (
                             trainer.cfg.policy_trainer.batch_size * trainer.cfg.policy_trainer.horizon)
                     self.times["actor_and_q_s"] += duration
-                self.event(kind, iteration=trainer.iteration,
+                event_kind = ("actor_rejected" if kind == 'actor_update' and metrics.get('actor_step_rejected', 0)
+                              else "critic_warmup" if kind == "actor_update"
+                              and not metrics.get("actor_step_performed", 1) else kind)
+                self.event(event_kind, iteration=trainer.iteration,
                            env_transitions=trainer.iteration * trainer.env.num_envs,
                            duration_s=duration, counters=dict(self.counters), metrics=metrics,
                            allocated_bytes=torch.cuda.memory_allocated() if torch.cuda.is_available() else 0,
